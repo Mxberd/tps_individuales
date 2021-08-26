@@ -32,7 +32,7 @@ Historico_01 <- Historico_00 %>%
 Historico_01 <- Historico_01 %>% 
   mutate(periodo = ym(periodo))
 
-
+git push -f origin master
   
 
 
