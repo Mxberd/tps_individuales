@@ -3,11 +3,12 @@
 #Para empezar, llamamos a nuestras librerias.
 
 library(tidyverse)
-library(lubridate)
 library(datos)
 library(janitor)
-library(skimr)
 library(sf)
+library(zip)
+library(skimr)
+
 #Tambien acomodamos la visualizacion de los valores numericos elimando notacion cientifica.
 options(scipen = 999)
 
@@ -16,11 +17,15 @@ options(scipen = 999)
 #Importamos la base de datos.
 
 
-base_00 <- read.csv("Datos/arbolado-publico-lineal-2017-2018.csv", 
-  encoding = "UTF-8", dec = ".")
+base_00<- read.csv("Datos/arbolado-publico-lineal-2017-2018.csv", 
+                   encoding = "UTF-8", dec = ".")
 
+#Si hubiera algun problema de lectura, tambien se puede cargar el zip que esta incluido en "datos"
+
+#Podemos continuar!
 
 #La funcion as_tibble()nos permitira hacer una mejor visualizacion de nuestros datos. 
+
 
 base_0A <- as_tibble(base_00)
 
@@ -48,8 +53,10 @@ base_00 <- base_00 %>%
 #str_detect Es una buena herramienta para hacerle preguntasa los datos. Por ejemplo:
 #Hay bananos en el arbolado de alineacion? lo buscamos por su nombre cientifico "Musa x paradisiaca"!
 
+
 Banano  <- 
   str_detect( string = base_0A, pattern = "Musa x paradisiaca") 
+
 
 #La respuesta "FALSE" en todas las categorias nos da entender que no habria bananos, al menos
 #espresados por su nombre cientifico.
@@ -64,12 +71,13 @@ base_01 <- base_00 %>%
 
 #Ponemos 100 ejemplares como el piso a sobrepasar para considerarse especie signficativa
 #Para ello usamos case_when
+
 base_01 <-base_01 %>% 
   mutate(significatividad = case_when(cantidad_registrada<100
-  ~ "No Significativa", TRUE ~ "Significativa"))
+                                      ~ "No Significativa", TRUE ~ "Significativa"))
 
 base_01 %>% count(significatividad)
-  
+
 #Detectamos que hay 333 especies No significativas, altener muy baja representatividad. 
 # Por otro lad 95 si tienen buena representatividad.
 
@@ -98,7 +106,7 @@ base_0C <- base_01 %>%
 
 ggplot(base_0C )+
   geom_bar(aes(x=reorder(Tipo,-cantidad_registrada), weight=cantidad_registrada,fill="cantidad de ejemplares"),
-  fill = "darkolivegreen4")+
+           fill = "darkolivegreen4")+
   coord_flip()+
   theme(legend.position="top")+  
   labs(title ="Arbolado - CABA", subtitle="Primera Aproximacion", fill="cantidades detectadas", x="especies", y="cantidad", caption= "Nota: fuente, BA data")+
@@ -112,27 +120,61 @@ ggplot(base_0C )+
 #Nos gustaria identificar a laS especieS mas representativaS de cada barrio. 
 #Para ello debemos cruzar datos.
 
-#Primero transformamos las coordenadas en geometria.
-
-
-
-#Ahora podemos ejutar la funcion
-
-
 #Estudiemos la distribucion de las primeras 3
 #Platanos, Fraxinus y Ficus.
 
 base_05 <- base_03 %>% 
   filter (Tipo %in% c("Fraxinus pennsylvanica","Platanus x acerifolia",
-  "Ficus benjamina"))
+                      "Ficus benjamina"))
 
 #Descubrimos que estas 3 especies practicamente representan la mitad de los ejemplares
 
+#Queremos averiguar cual es el barrio con mas ficus.
+
+barrios_01 <- barrios %>% 
+  select(barrio,geometry)
+
+base_06 <- base_05 %>%
+  filter(Tipo=="Ficus benjamina") %>% 
+  st_as_sf(coords = c("long", "lat"), crs = 4326) %>% 
+  select(Tipo,geometry) %>% 
+  st_join(barrios_01)
+
+#Habiendo unido con st_join la informacion de los barrios con la 
+#respectiva ubicacion de los arboles, estamos listos para hacer un mapa coropletico
+
+base_0D <- base_06 %>% 
+  select(barrio)%>%
+  group_by(barrio) %>% 
+  summarise(cantidad_registrada=n())
+
+#Con st_set_geometry(NULL) elimino los datos espaciales que contenian los puntos de los arboles
+
+base_0E<-base_0D %>% 
+  st_set_geometry(NULL) 
+
+#hago una nueva union y vuelvo a aplicar st_as_sf.
+
+base_0E <- base_0E %>% 
+  right_join(barrios_01) %>% 
+  st_as_sf()
 
 
+ggplot(base_0E)+
+  geom_sf(aes(fill=cantidad_registrada), color= NA)+
+  scale_fill_viridis_c(breaks=c(0,200,400,600,800,1000,1200))+
+  geom_sf_text(data=base_0E, aes(label = barrio), size=1.5)+
+  labs(title = "Mapa coropletico arbolado",
+       subtitle = "Visualizacion especie Ficus Benjamina",
+       fill = "arboles/barrio",
+       caption= "Fuente: BADATA, elaboracion propia")+
+  theme_light()+
+  theme_void()
 
+#PALERMO, VILLA URQUIZA, CABALLITOS,FLORES Y MATADEROS
+#SON LOS BARRIOS DONDE MAS FICUS HAN ESTADO PLANTANDO (SIN DUDA) LOS VECINOS-
 
-
+#HEMOS TERMINADO EL EJERCICIO!
 
 
  

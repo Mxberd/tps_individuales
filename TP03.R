@@ -1,0 +1,6 @@
+#TRABAJO PRACTICO 03- SCRAPEO EN LINEA.
+
+library(rvest)
+library(tidyverse)
+
+#CARGAMOS LAS LIBRERIAS A UTILIZAR
